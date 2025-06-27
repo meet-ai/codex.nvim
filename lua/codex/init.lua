@@ -155,14 +155,48 @@ function M.open()
       table.insert(cmd_args, '-m')
       table.insert(cmd_args, config.model)
     end
-
+    if config.provider then
+      table.insert(cmd_args, '-p')
+      table.insert(cmd_args, config.provider)
+    end
+  
+    -- 检查是否有可视模式选区
+    local mode = vim.fn.mode()
+    local input_text = nil
+    if mode == 'v' or mode == 'V' then
+      local start_pos = vim.fn.getpos("'<")[2]
+      local end_pos = vim.fn.getpos("'>")[2]
+      local lines = vim.api.nvim_buf_get_lines(0, start_pos-1, end_pos, false)
+      input_text = table.concat(lines, "\n")
+    end
+  
     state.job = vim.fn.termopen(cmd_args, {
       cwd = vim.loop.cwd(),
       on_exit = function()
         state.job = nil
       end,
     })
+  
+    -- 如果有选区内容，写入 stdin
+    if input_text then
+      vim.fn.chansend(state.job, input_text .. "\n")
+      vim.fn.chanclose(state.job, "stdin")
+    end
   end
+--  if not state.job then
+--    local cmd_args = type(config.cmd) == 'string' and { config.cmd } or vim.deepcopy(config.cmd)
+--    if config.model then
+--      table.insert(cmd_args, '-m')
+--      table.insert(cmd_args, config.model)
+--    end
+--
+--    state.job = vim.fn.termopen(cmd_args, {
+--      cwd = vim.loop.cwd(),
+--      on_exit = function()
+--        state.job = nil
+--      end,
+--    })
+--  end
 end
 
 function M.close()
